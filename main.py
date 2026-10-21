@@ -1,5 +1,22 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 import httpx
+from pydantic import BaseModel, ValidationError
+
+class CurrentWeather(BaseModel):
+    temperature_2m: float
+    relative_humidity_2m: int
+
+
+class WeatherUnits(BaseModel):
+    temperature_2m: str
+    relative_humidity_2m: str
+
+
+class WeatherResponse(BaseModel):
+    latitude: float
+    longitude: float
+    current: CurrentWeather
+    current_units: WeatherUnits
 
 app = FastAPI()
 
@@ -7,9 +24,11 @@ app = FastAPI()
 def health():
     return {"status": "ok"}
 
-
-@app.get("/weather")
-def get_weather(latitude: float, longitude: float):
+@app.get("/weather", response_model=WeatherResponse)
+def get_weather(
+    latitude: float = Query(ge=-90, le=90),
+    longitude: float = Query(ge=-180, le=180),
+):
     url = "https://api.open-meteo.com/v1/forecast"
 
     params = {
@@ -34,11 +53,20 @@ def get_weather(latitude: float, longitude: float):
             detail="Could not retrieve weather data",
         )
 
-    data = response.json()
+    try:
+        data = response.json()
+    except ValueError:
+        raise HTTPException(
+            status_code=502,
+            detail="Weather provider returned invalid JSON",
+        )
 
-    return {
-        "latitude": data["latitude"],
-        "longitude": data["longitude"],
-        "current": data["current"],
-        "current_units": data["current_units"],
-    }
+    try:
+        weather = WeatherResponse.model_validate(data)
+    except ValidationError:
+        raise HTTPException(
+            status_code=502,
+            detail="Weather provider returned an invalid response",
+        )
+
+    return weather

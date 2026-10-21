@@ -114,6 +114,15 @@ With the server running, visit:
 
 Use the interactive documentation to explore and execute requests.
 
+## Running Tests
+
+Run the test suite from the project root:
+
+uv run python -m pytest -v
+
+The tests cover the health-check endpoint, valid weather requests, input validation, and error handling when the external weather provider fails or returns invalid data.
+
+
 ## Learning Goals
 
 This project practises HTTP APIs, query parameters, input validation, external API integration, error handling, and developer documentation.
